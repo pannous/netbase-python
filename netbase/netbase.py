@@ -1,49 +1,96 @@
 #!/usr/bin/env PYTHONIOENCODING="utf-8" python
 # -*- coding: utf-8 -*-
+import locale
 import os
 import re
 import os.path
-
-# api = "http://netbase.pannous.com/json/all/"
-api = "http://localhost:8181/json/all/"
-api_html = api.replace("json", "html")
-api_limit = " limit 100"
-# caches_netbase_ = "~/Library/Caches/netbase/"
-caches_netbase_ = "/Users/me/Library/Caches/netbase/"
-
+import dill as pickle  # BEST! no more Can't pickle <function
 import json
-import extensions
+import codecs  # codecs.open(file, "r", "utf-8")
 
-try: # pathetic ! :
+try:  # pathetic python3 !
 	from urllib2 import urlopen
 	from urllib import urlretrieve
 except ImportError:
 	from urllib.request import urlopen, urlretrieve  # library HELL
+
+from extensions import *  # for functions
+import extensions
+from os.path import expanduser
+
+api = "http://netbase.pannous.com/json/all/"
+api_list = "http://netbase.pannous.com/json/short/"
+api_all = "http://netbase.pannous.com/json/query/all/"
+my_locale=	locale.getdefaultlocale()
+# locale.windows_locale[ windll.GetUserDefaultUILanguage() ]
+# NSLocale.current.languageCode #@swift
+if "de" in my_locale:
+	api = "http://de.netbase.pannous.com/json/all/"
+	api_list = "http://de.netbase.pannous.com/json/short/"
+	api_all = "http://de.netbase.pannous.com/json/query/all/"
+
+# api = "http://localhost:8181/json/all/"
+api_html = api.replace("json", "html")
+api_limit = 1000
+caches_netbase_ = expanduser("~/Library/Caches/netbase/")
+abstracts_netbase = expanduser("~/Library/Caches/netbase/all/")
+
+
+def cached_names():
+	return []
+	# cached_files = ls(
+	# 	"~/Library/Caches/netbase/").map(lambda x: x.replace(".json", "").replace(" ", "_"))
+	# cached_files = cached_files.filter(lambda x: not is_number_string(x))
+	# return list(set(cached_files + cache.keys() + ['OKAH']))
+
+
+if not os.path.exists(abstracts_netbase):
+	os.makedirs(abstracts_netbase)  # mkdir
 
 
 def download(url):  # to memory
 	return urlopen(url).read()
 
 
+def spo(edge):
+	subject, predicate, object = edge['subject'], edge['predicate'], edge['object']
+	return subject, predicate, object
+
+
+def spo_ids(edge):
+	sid, pid, oid = edge['sid'], edge['pid'], edge['oid']
+	return sid, pid, oid
+
+
 class Edges(extensions.xlist):
-	pass
+	def show(self):
+		for edge in self:
+			sid, pid, oid = edge['sid'], edge['pid'], edge['oid']
+			subject, predicate, object = edge['subject'], edge['predicate'], edge['object']
+			print("%d %d  %d  %s  %s  %s" %
+					(sid, pid, oid, subject, predicate, object))
 
 
 def get(id, name=0):
-	return netbase.get(id or name)
+	return net.get(id or name)
+
+class SelectProxy:
+	def __init__(self, node):
+		self.node=node
+
+	def __getattr__(self, item):
+		return self.node.getProperty(item)
 
 
 class Node:
 	def __init__(self, *args, **kwargs):
-		# print(args)
-		if not kwargs: kwargs = args[0]
-		# print(kwargs)
-		# self.id = args['id']
-		# self.name = args['name']
-		# self.statements = Edges(args['statements'])
+		if not kwargs:
+			kwargs = args[0]
+		self.loaded = False
 		self.id = kwargs['id']
 		self.name = kwargs['name']
-		# if 'description' in result:
+		self.is_abstract= 'kind' in kwargs and kwargs['kind'] == -102
+		self.topic = 'topic' in kwargs and kwargs['topic'] or None
 		if 'description' in kwargs:
 			self.description = kwargs['description']
 		else:
@@ -52,19 +99,51 @@ class Node:
 			self.count = kwargs['statementCount']
 		if 'statements' in kwargs:
 			self.edges = Edges(kwargs['statements'])
+			self.loaded = True
+		# self.statements = Edges(args['statements'])
+
+	def print_csv(self):
+		self.edges.show()
+
+	def show_compact(self):
+		print("%s{id:%d, topic:%s, edges=[" % (self.name, self.id, self.topic))
+		for edge in self.edges:
+			subject, predicate, object = edge['subject'], edge['predicate'], edge['object']
+			predicate= predicate.replace(" ","_")
+			if subject == self.name or edge['sid'] == self.id:
+				print(" %s:%s," % (predicate, object))
+			else:
+				in_predicate = "_of" in predicate or "_after" in predicate or "_by" in predicate
+				in_predicate = in_predicate or "_in" in predicate or "_von" in predicate
+				if in_predicate:
+					print(" %s:%s," % (predicate, subject))
+				else:
+					print(" %s_of:%s," % (predicate, subject))
+		print("]}")
+
+	def __dir__(self):
+		return map(lambda x: x.replace(" ", "_"), self._predicates())
 
 	def __str__(self):
+		if self.topic:
+			return "%s(%s)%s" % (self.name, self.topic, self.is_abstract and "*" or "")
+		if self.name and self.id:
+			return "%s(%d)%s" % (self.name, self.id, self.is_abstract and "*" or "")
 		return self.name or self.id
 
 	def __repr__(self):
-		return self.name or self.id
-
+		return self._short()
+		# return self.name or self.id
 	# return self.name + "_" + str(self.id)
 	# if self.type:
 	# 	return self.name + ":" + self.type.name
 	# return self.name + ":" + self.type.name
 
 	def _short(self):
+		if self.topic:
+			return "{name:'%s', id:%d, topic:'%s'}" % (self.name, self.id, self.topic)
+		if not self.description:
+			return "{name:'%s', id:%s%d}" % (self.name, self.is_abstract and "+" or "", self.id)
 		return "{name:'%s', id:%d, description:'%s'}" % (self.name, self.id, self.description)
 
 	def _json(self):
@@ -78,16 +157,17 @@ class Node:
 
 	def show(self):
 		if "http" in self.name:
-			os.system("open " + self.name);
-		print(self._json())
+			os.system("open " + self.name)
+		print(self.show_compact())
+		# print(self._json())
 
 	def _predicates(self):
-		all = []
+		alles = []
 		for e in self.edges:
 			predicate = e['predicate']
-			if not predicate in all:
-				all.append(predicate)
-		return all
+			if not predicate in alles:
+				alles.append(predicate)
+		return xlist(set(alles))
 
 	def _print_edges(self):
 		for e in self.edges:
@@ -95,7 +175,8 @@ class Node:
 				print(" %s:%s" % (e['predicate'], e['object']))
 			else:
 				if " of" in e['predicate']:
-					print(" %s: %s" % (e['predicate'].replace(" of", ""), e['subject']))
+					print(" %s: %s" %
+							(e['predicate'].replace(" of", ""), e['subject']))
 				else:
 					print(" %s of: %s" % (e['predicate'], e['subject']))
 		return self.edges
@@ -109,44 +190,78 @@ class Node:
 				if " of" in e['predicate']:
 					map[e['predicate'].replace(" of", "")] = e['subject']
 				else:
-					map[e['predicate']+" of"] = e['subject']
+					map[e['predicate'] + " of"] = e['subject']
 		return map
 
 	def _load_edges(self):
-		url = api + str(self.id)
-		print(url)
-		data = download(url)
-		data = json.loads(data.decode('utf8', 'ignore'))  # FUCK PY3 !!!
+		if self.loaded:
+			return self.edges
+		file = caches_netbase_ + str(self.id) + ".json"
+		if not os.path.exists(file):
+			url = api + str(self.id)
+			print(url)
+			urlretrieve(url, file)
+		# data = open(file,'rb').read()
+		data = codecs.open(file, "r", "utf-8").read()
+		if py2: data=data.decode('utf8', 'ignore')
+		data = json.loads(data)  # FUCK PY3 !!!
 		# data = json.loads(str(data, "UTF8"))  # FUCK PY3 !!!
 		result = data['results'][0]
 		self.edges = Edges(result['statements'])
+		self.loaded = True
 		return self.edges
 
+	def fetchProperties(self,property):
+		return download(api_all+self.name+"."+property)
+
 	def getProperties(self, property, strict=False):
+		# if(self.statementCount>api_limit):
+		# 	return self.fetchProperties(property)
 		found = []
 		for e in self.edges:
 			predicate = e['predicate'].lower()
 			if predicate == property or not strict and (property in predicate):
 				if e['sid'] == self.id:
-					found.append(get(name=e['object'], id=e['oid']))
+					found.append(Node(name=e['object'], id=e['oid']))
 				elif not strict:
-					found.append(get(name=e['subject'], id=e['sid']))
+					found.append(Node(name=e['subject'], id=e['sid']))
+			if not strict and property in e['object']:
+				found.append(Node(name=e['object'], id=e['sid']))
 		if property == 'instance':
 			found.extend(self.getProperties('type', strict=True))
-		if self in found: found.remove(self)
-		if not found: return []
-		return set(found)
+		try:
+			if self in found:
+				found.remove(self)
+		except Exception as ex:
+			pass
+		if not found:
+			return xlist([])
+		return xlist(found)
+
+	# print(found)
+	# return set(found)
 
 	def getProperty(self, property, strict=False):
-		if property == 'predicates': return self._predicates()
-		if property == 'edges': return self._load_edges()
-		if property == 'all': return net.all(self.id, True, False)
-		# if property == 'list': return self._print_edges()  # net.all(self.id, True, False)
-		if property == 'list': return self._map()  # net.all(self.id, True, False)
-		if property == 'count': return self.count or self.edges.count()
-		if property == 'json': return self._json()
-		if property == 'short': return self._short()
-		if property == 'descriptions': return self.description
+		if property == 'predicates':
+			return self._predicates()
+		if property == 'net':
+			return net
+		if property == 'select':
+			return SelectProxy(self)
+		if property == 'edges':
+			return self._load_edges()
+		if property == 'all':
+			return net._all(self.id, True, False)
+		if property == 'list':
+			return self._map()
+		if property == 'count':
+			return self.count or self.edges.count()
+		if property == 'json':
+			return self._json()
+		if property == 'short':
+			return self._short()
+		if property == 'descriptions':
+			return self.description
 
 		property = property.replace("_", " ").lower()
 		# print("getProperty " + self.name+"."+ property)
@@ -157,13 +272,16 @@ class Node:
 					return Node(name=e['object'], id=e['oid'])
 				elif not strict:
 					return Node(name=e['subject'], id=e['sid'])
-		if strict: return None
+		if strict:
+			return []#None
 		for e in self.edges:
 			if property in e['predicate'].lower():
 				if e['oid'] == self.id:
 					return Node(name=e['subject'], id=e['sid'])
 				else:
 					return Node(name=e['object'], id=e['oid'])
+			if not strict and property in e['object']:
+				return Node(name=e['object'], id=e['sid'])
 		if property == 'parent':
 			return self.getProperty('superclass', strict=True) or self.getProperty('type', strict=True)
 		if is_plural(property):
@@ -172,6 +290,12 @@ class Node:
 	def __getattr__(self, name):
 		# print("get " + name)
 		return self.getProperty(name)
+
+
+# Node.show_edges = Node.print_csv
+# Node._display = Node.show_compact
+# Node._render = Node.show_compact
+# Node._print = Node.show_compact
 
 
 def is_plural(name):
@@ -189,164 +313,162 @@ def singular(name):
 	return name
 
 
-import dill as pickle  # BEST! no more Can't pickle <function
-
-
 class Netbase:
 	def __init__(self):
 		self.cache = {}
 		self.caches = {}
 
 	def types(self, name):
-		return self.all(name, instances=False)
+		return self._all(name, instances=False) # select(kind=...)
 
 	# @classmethod
-	def all(self, name, instances=False, deep=False, reload=False):
+	def _all(self, name, instances=False, deep=False, reload=False):
 		if isinstance(name, int):
-			name = str(name)  # id
+			n=self.get(name)
+			if not n.is_abstract: return n
+			else: name = str(name)  # id
 		if is_plural(name):
-			return self.all(singular(name))
+			return self._all(singular(name))
 		if name in self.caches:
 			return self.caches[name]
-		if deep: name = "query/all/" + name  # hack!
-		file = caches_netbase_ + name + ".json"
+		file = abstracts_netbase + name + ".json"
 		if reload or not os.path.exists(file):
 			print(api + name)
-			urlretrieve(api + name, file)
-		data = open(file).read()
+			urlretrieve(api_all + name, file)
+		data = codecs.open(file, "r", "utf-8", errors='ignore').read()
+		# data = open(file,'rb').read()
+		if not isinstance(data,unicode):
+			data=data.decode("UTF8", 'ignore')
+		# FUCK PY3 !!!  'str' object has no attribute 'decode'
+		# 	FUCKING PYTHON MADNESS!!
+		# http://stackoverflow.com/questions/5096776/unicode-decodeutf-8-ignore-raising-unicodeencodeerror#5096928
 		try:
+			# data = json.loads(data)
 			data = json.loads(data)
 		except Exception as ex:
 			print(ex)
 			os.remove(file)
-			return Node(id=-666, name="ERROR")
+			# return Node(id=-666, name="ERROR")
 		nodes = extensions.xlist()
 		for result in data['results']:
 			# print(result)
 			node = Node(result)
 			nodes.append(node)
 			if instances:
-				nodes.append(self.all(node.id, False, True, reload))
+				nodes.append(self._all(node.id, False, True, reload))
 				nodes.append(node.instances)
 		self.caches[name] = nodes
 		return nodes
 
 	# @classmethod
-	def get(self, name):
+	def get(self, name, get_the=False):
 		# return all(name)[0]
 		if isinstance(name, int):
 			name = str(name)  # id
 		if is_plural(name):
-			return self.all(singular(name))
+			return self._all(singular(name))
 		if name in self.cache:
-			return self.cache[name]
+			node= self.cache[name]
+			if not get_the or not node.is_abstract:
+				return node
 		# print("getThe "+name)
 
 		file = caches_netbase_ + name + ".json"
 		if not os.path.exists(file):
 			print(api + name)
 			urlretrieve(api + name, file)
-		data = open(file, 'rb').read()
+		# data = open(file, 'rb').read()
+		data = codecs.open(file, "rb", "utf-8").read()
+		if not isinstance(data, unicode):
+			data = data.decode("UTF8", 'ignore')
 		try:
-			data = json.loads(data.decode("UTF8", 'ignore'))  # FUCK PY3 !!!
-		except:
-			os.remove(file)
-		result = data['results'][0]
-		node = Node(result)
+			data = json.loads(data)  # FUCK PY3 !!!  'str' object has no attribute 'decode'
+		except Exception as ex:
+			print(ex)
+			pass
+		# os.remove(file)
+		# noinspection PyTypeChecker
+		results = data['results']
+		if len(results) == 0:
+			return None
+		for i in range(len(results)):
+			result = results[i] # first == 'the'
+			node = Node(result)
+			if not get_the or not node.is_abstract: break
 		self.cache[name] = node
 		return node
 
+	def __dir__(self):
+		return cached_names()
+
+	# return [] #  no autosuggest for root
+
+	# def __call__(self):
+	# 	return ['__call__ ??']
+
 	def __getattr__(self, name):
+		if name == "net":
+			return net
+		if name == "world":
+			return net
 		if name == "all":
-			return All()  # use net.all.birds OR net.birds.all / net.bird.232.all
+			return alle  # use net.all.birds OR net.birds.all / net.bird.232.all
 		# return self.all(name)
 		# print("get "+name)
 		return self.get(name)
 
 
-class All(Netbase):
+class Alle(type):
 	def __getattr__(self, name):
-		return self.all(name, True, True)
-
-	# return self.all(name, True, False) #reload
+		return net._all(name, False, False)
 
 
-netbase = world = net = Netbase()
-alle = All()
+class Alles(Netbase):
+	def __getattr__(self, name):
+		return net._all(name, False, False)
 
+
+
+class The:
+	def __getattr__(self, name):
+		return net.get(name, get_the=True)
+
+
+if py2:
+	class All:
+		__metaclass__ = Alle
+else:
+	try:
+		from .alle import All# fuck py3
+	except Exception as err:
+		from alle import All  # fuck py3
+
+world = net = Netbase()
+cache = net.cache
+alle = Alles()
+the = The()
+if py3: All.setNet(net)
 
 def main():
-	# print(net.c)
-	# print(net.countries)
-	# print(net.weapons)
-	# print(net.states)
-	print(net.states[0])
-	print(net.states[0].description)
-	print(net.states.descriptions)
-	print(net.states[0].type)
-	print(net.states[0].id)
-	# print(net.states[0].subclasses)
-	print(net.states[0].short)
-	# print(net.california.open())
-	# print(net.united_states_.edges.to_s())
-	# print(net.united_states_.predicates)
-	# print(net.united_states_.ofs)
-	# print(alle.weapons)
-	# print(net.north_america.countries)
-	# print(net.north_america.predicates)
-	# print(net.north_america.parts)
-	# print(net.north_america.rocky_mountains_)
-	print(net.rocky_mountains_.list)
-
-	# print(net.north_america.states)
-
-	# print(alle.insects)
-	# print(net.id_10017)
-	# print(net.types('country').id)
-	#
+	global net,the
+	world = net = Netbase()
+	cache = net.cache
+	alle = Alles()
+	the = The()
+	if py3: All.setNet(net)
+	# print(the.USA)
+	# print(All.hi)
+	xs= All.USA
+	for bad in xs:
+		print (bad.id)
+		print (bad.name)
+		print (bad._short())
+		print (bad.topic)
+		print (bad.description)
+	# print(xs)
+	# print(net.USA.all)
+	# print(net.USA.select.country) # select proxy hack
 	return
-	print(net.Germany.name)
-	print(net.Germany.capital)
-	# print(net.Germany.edges)
-	# print(net.Germany.predicates)
-	print(net.Germany.type)
-	print(net.Germany.saint)
-	print(net.Germany.borders)
-	print(net.Germany.time_zone)
-	print(net.Germany.country_code)
-	# print(net.Germany.image)
-	print(net.Germany.flag.image)
-	# print(net.Germany.born.edges)
-	print(net.Germany.type)
-	print(net.Germany.parent)
-	# print(net.Germany.parent.subclasses)
-
-	# print(net.Hasloh.edges)
-	print(net.Hasloh.count)
-	# print(net.Hasloh.website.open())
-	# print(net.Hasloh.image.show())
-	print(net.Hasloh.partner)
-	# print(net.Hasloh.topic)
-	print(net.Hasloh.types)
-	print(net.Hasloh.parent.instances)
-
-
-# print(net.Hasloh.type.parent.parent.parent.parent.parent.parent.parent.parent.parent)
-#
-#
-#
-#
-
-
-# print(net.Hasloh.type.predicates)
-# # print(net.Hasloh.type.edges)
-# print(net.Hasloh.type.superclass)
-# print(net.Germany.type)
-# print(net.Germany.type.parent)
-
-
-# print(net.Germany.capital)
-
 
 if __name__ == '__main__':
 	main()

@@ -18,7 +18,7 @@ setup(
     cmdclass=cmdclass,
     ext_modules=ext_modules,
     name='Netbase',
-    version="0.1.10",
+    version="0.1.16",
     author="Pannous",
     author_email="info@pannous.com",
     # https://github.com/pannous/netbase
@@ -27,8 +27,8 @@ setup(
     license='Apache2 license',
     long_description=open('README.md', 'rb').read().decode('utf8'),
     dependency_links=['git+http://github.com/pannous/netbase.git#egg=angle'],
-    install_requires=[''],
-    scripts=['netbase.py'],
+    install_requires=['dill'],
+    scripts=[],#'netbase.py'],
     package_data={
         # '': ['*.cu', '*.cuh', '*.h'],
     },

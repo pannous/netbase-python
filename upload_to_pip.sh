@@ -5,16 +5,18 @@ increase-package-version.py
 
 # register
 # python3 setup.py register -r pypitest
-# ............. OR ::::::::::::::::
-# twine register dist/*
-# twine register dist/angle-0.1.dev0.tar.gz 
 
 # generate pip
 #######################################################
 rm dist/* # clear old
-python3 setup.py sdist bdist_wheel --universal upload
+# python3 setup.py sdist bdist_wheel --universal 
+# python3 setup.py sdist upload -r pypi
+python3 setup.py sdist bdist_wheel --universal upload -r pypi
+
+# twine register dist/*
+# twine register dist/angle-0.1.dev0.tar.gz 
+
 
 # upload pip .egg
 #######################################################
 twine upload dist/*.whl
-# python3 setup.py sdist upload -r pypi
