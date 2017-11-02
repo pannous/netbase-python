@@ -21,13 +21,14 @@ from os.path import expanduser
 api = "http://netbase.pannous.com/json/all/"
 api_list = "http://netbase.pannous.com/json/short/"
 api_all = "http://netbase.pannous.com/json/query/all/"
-my_locale=	locale.getdefaultlocale()
-# locale.windows_locale[ windll.GetUserDefaultUILanguage() ]
-# NSLocale.current.languageCode #@swift
-if "de" in my_locale:
+
+def setGerman():
 	api = "http://de.netbase.pannous.com/json/all/"
 	api_list = "http://de.netbase.pannous.com/json/short/"
 	api_all = "http://de.netbase.pannous.com/json/query/all/"
+
+if "de" in locale.getdefaultlocale() || os.environ['NETBASE_LANGUAGE']:
+	setGerman()
 
 # api = "http://localhost:8181/json/all/"
 api_html = api.replace("json", "html")
