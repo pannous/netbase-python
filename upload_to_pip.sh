@@ -8,6 +8,7 @@ increase-package-version.py
 
 # generate pip
 #######################################################
+rm build/
 rm dist/* # clear old
 # python3 setup.py sdist bdist_wheel --universal 
 # python3 setup.py sdist upload -r pypi

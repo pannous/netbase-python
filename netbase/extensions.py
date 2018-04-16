@@ -1,6 +1,7 @@
 # encoding: utf-8
-# nocoding: interpy "string interpolation #{like ruby}"
-# encoding=utf8
+# import extensions
+# from extensions import *
+
 import io
 import math
 import sys
@@ -13,6 +14,15 @@ from os.path import expanduser  # "~" wth
 from random import randint
 from random import random as _random
 import shutil
+
+from os.path import expanduser
+
+try:  # pathetic python3 !
+	from urllib2 import urlopen
+	from urllib import urlretrieve
+except ImportError:
+	from urllib.request import urlopen, urlretrieve  # py3 library HELL
+
 # from extension_functions import * MERGED BACK!
 
 py2 = sys.version < '3'
@@ -20,10 +30,12 @@ py3 = sys.version >= '3'
 
 true = True
 false = False
-
+nil = None
+null = None
 pi = math.pi
 E = math.e
 
+run = system = os.system # command  != exec(PY_CODE) !!!
 
 def Max(a, b):
 	if a > b:
@@ -53,6 +65,11 @@ def pick(xs):
 	return xs[randint(len(xs))]
 
 
+def read_lines(source):
+	print("open(source).readlines()")
+	return map(str.strip, open(source).readlines())
+
+
 def readlines(source):
 	print("open(source).readlines()")
 	return map(str.strip, open(source).readlines())
@@ -77,6 +94,9 @@ def fold(self, x, fun):
 	return reduce(fun, self, x)
 
 
+def match(self, regex):
+	m = re.match(regex,self) or re.search(regex,self)
+	return m and m.group() or False
 
 def last(xs):
 	return xs[-1]
@@ -207,8 +227,13 @@ MatchObjectType = type(re.search('', ''))
 
 
 def typeof(x):
-	print("type(x)")
-	return type(x)
+	print("type(x) or x.__class__")
+	print(type(x))
+	print(x.__class__)
+	return x.__class__
+	# return type(x)
+
+regex=re.compile
 
 
 def regex_matches(a, b):
@@ -230,6 +255,20 @@ def regex_matches(a, b):
 	print(b)
 	return b.search(str(a))  # vs
 
+matches=regex_matches
+match=regex_match
+
+# import _sre
+# from _sre import SRE_Pattern
+
+#  TypeError: can't set attributes of built-in/extension type -> HACK IT
+try:
+	# // TODONT!!!
+	from forbiddenfruit import curse
+	curse(re.compile(r'').__class__,"matches",regex_matches)
+	curse(re.compile(r'').match('').__class__,"__str__","OK")
+except Exception as e:
+	pass
 
 # return b.match(a) # vs search
 # return a.__matches__(b) # other cases
@@ -594,6 +633,7 @@ class xlist(list):
 	def add(self, x):
 		self.insert(len(self), x)
 
+	# via __getattr__
 	def method_missing(xs, name, *args, **kwargs):  # [2.1,4.8].int=[2,5]
 		if len(xs) == 0: return None
 		try:
@@ -877,7 +917,8 @@ class xstr(str):
 		return self.sub(0, self.indexOf(pattern))
 
 	def match(self, regex):
-		return re.match(regex,self)
+		m = re.match(regex,self) or re.search(regex,self)
+		return m and m.group() or False
 
 	def matches(self, regex):
 		if isinstance(regex, list):
@@ -894,6 +935,9 @@ class xstr(str):
 	def join(self, x):
 		return self + x
 
+
+	def up_first(self):
+		return self.capitalize()
 	# def < x:
 	#   i=x.is_a?Numeric
 	#   if i:
@@ -1534,5 +1578,58 @@ def find_class(match=""):  # all
 #         if name==attr: return obj
 #     return False
 
+
+
+def download(url):  # to memory
+	return urlopen(url).read()
+
+def wget(url):  # to memory
+	return urlopen(url).read()
+
+
+# class Unit:
+# 	def __init__(self, value=1.):
+# 		self.value = value
+#
+# 	def __mul__(self, other):
+# 		return Unit(value=self.value * other) # todo: inherit km(3)*km(3)==km2(9)
+#
+# 	def __add__(self, other):
+# 		return Unit(value=self.value + other)  # todo: inherit km(3)+m(3000)==km(6)
+#
+#
+# class Km(Unit):
+# 	def __eq__(self, other):
+# 		return self.value == other.value
+#
+#
+# km = Km()
+# assert Km(3) == km * 3
+
 print("extensions loaded")
 extensions_loaded=True
+
+def fi():
+	from tkinter import filedialog
+
+	if platform() == 'Darwin': system("osascript -e 'tell app \"Finder\" to set frontmost of process \"Python\" to true'")
+	# if platform() == 'Darwin': system('''/usr/bin/osascript -e 'tell app "Finder" to set frontmost of process "Python" to true' ''')
+
+	return filedialog.askopenfilename()
+  # absolute_import askdirectory(askopenfile(askopenfilename(askopenfilenames(askopenfiles(asksaveasfile(asksaveasfilename(
+
+ # def hack_builtins(): # not with bound methods :(
+	# hacks=(xstr,xlist,xfloat,xint)#,xfile
+	# for hack in hacks:
+	# 	base=hack.__bases__[0]
+	# 	for meth in dir(hack):
+	# 		if meth.startswith("_"): continue
+	# 		curse(base,meth,getattr(hack,meth)) # TypeError: unbound method must be called with xstr instance as first argument
+	# 		curse(base,meth,lambda inst:getattr(hack,meth).bind(inst)())
+	# 		# curse(base,meth,lambda *args, **kwargs: getattr(hack,meth)(self, *args, **kwargs)
+
+
+from numpy import logspace
+from math import log
+def expspace(start,end,steps=10):
+	return logspace(log(start),log(end),steps)

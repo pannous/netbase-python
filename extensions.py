@@ -262,9 +262,13 @@ match=regex_match
 # from _sre import SRE_Pattern
 
 #  TypeError: can't set attributes of built-in/extension type -> HACK IT
-from forbiddenfruit import curse
-curse(re.compile(r'').__class__,"matches",regex_matches)
-curse(re.compile(r'').match('').__class__,"__str__","OK")
+try:
+	# // TODONT!!!
+	from forbiddenfruit import curse
+	curse(re.compile(r'').__class__,"matches",regex_matches)
+	curse(re.compile(r'').match('').__class__,"__str__","OK")
+except Exception as e:
+	pass
 
 # return b.match(a) # vs search
 # return a.__matches__(b) # other cases
@@ -1623,3 +1627,9 @@ def fi():
 	# 		curse(base,meth,getattr(hack,meth)) # TypeError: unbound method must be called with xstr instance as first argument
 	# 		curse(base,meth,lambda inst:getattr(hack,meth).bind(inst)())
 	# 		# curse(base,meth,lambda *args, **kwargs: getattr(hack,meth)(self, *args, **kwargs)
+
+
+from numpy import logspace
+from math import log
+def expspace(start,end,steps=10):
+	return logspace(log(start),log(end),steps)

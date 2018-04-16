@@ -14,8 +14,8 @@ try:  # pathetic python3 !
 except ImportError:
 	from urllib.request import urlopen, urlretrieve  # library HELL
 
-from extensions import *  # for functions
-import extensions
+from .extensions import *  # for functions
+
 from os.path import expanduser
 
 api = "http://netbase.pannous.com/json/all/"
@@ -27,8 +27,12 @@ def setGerman():
 	api_list = "http://de.netbase.pannous.com/json/short/"
 	api_all = "http://de.netbase.pannous.com/json/query/all/"
 
-if "de" in locale.getdefaultlocale() || os.environ['NETBASE_LANGUAGE']:
+if "de" in locale.getdefaultlocale():
 	setGerman()
+
+if 'NETBASE_LANGUAGE' in os.environ:
+	setGerman()
+
 
 # api = "http://localhost:8181/json/all/"
 api_html = api.replace("json", "html")
@@ -63,7 +67,7 @@ def spo_ids(edge):
 	return sid, pid, oid
 
 
-class Edges(extensions.xlist):
+class Edges(xlist):
 	def show(self):
 		for edge in self:
 			sid, pid, oid = edge['sid'], edge['pid'], edge['oid']
@@ -319,6 +323,12 @@ class Netbase:
 		self.cache = {}
 		self.caches = {}
 
+	def setGerman(x):
+		global api, api_list, api_all
+		api = "http://de.netbase.pannous.com/json/all/"
+		api_list = "http://de.netbase.pannous.com/json/short/"
+		api_all = "http://de.netbase.pannous.com/json/query/all/"
+
 	def types(self, name):
 		return self._all(name, instances=False) # select(kind=...)
 
@@ -350,7 +360,7 @@ class Netbase:
 			print(ex)
 			os.remove(file)
 			# return Node(id=-666, name="ERROR")
-		nodes = extensions.xlist()
+		nodes = xlist()
 		for result in data['results']:
 			# print(result)
 			node = Node(result)
@@ -381,7 +391,10 @@ class Netbase:
 		# data = open(file, 'rb').read()
 		data = codecs.open(file, "rb", "utf-8").read()
 		if not isinstance(data, unicode):
-			data = data.decode("UTF8", 'ignore')
+			try:
+				data = data.decode("UTF8", 'ignore')
+			except Exception as e:
+				pass # FUCK PY3 !!!
 		try:
 			data = json.loads(data)  # FUCK PY3 !!!  'str' object has no attribute 'decode'
 		except Exception as ex:

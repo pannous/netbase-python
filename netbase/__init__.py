@@ -12,6 +12,7 @@ from .netbase import Netbase, All
 # 	from alle import All
 #
 world = net = Netbase()
+get=net.get
 #
 #
 # class Alle(type):
