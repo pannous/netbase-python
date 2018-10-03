@@ -15,6 +15,9 @@ from random import randint
 from random import random as _random
 import shutil
 
+def randi(i):
+	return randint(0,i)
+
 from os.path import expanduser
 
 try:  # pathetic python3 !
@@ -34,6 +37,10 @@ nil = None
 null = None
 pi = math.pi
 E = math.e
+
+if py3:
+	print("FUCK py3!!")
+	unichr=chr
 
 run = system = os.system # command  != exec(PY_CODE) !!!
 
@@ -67,12 +74,12 @@ def pick(xs):
 
 def read_lines(source):
 	print("open(source).readlines()")
-	return map(str.strip, open(source).readlines())
+	return list(map(str.strip, open(source).readlines()))
 
 
 def readlines(source):
 	print("open(source).readlines()")
-	return map(str.strip, open(source).readlines())
+	return list(map(str.strip, open(source).readlines()))
 
 
 def reverse(x):
@@ -1578,12 +1585,20 @@ def find_class(match=""):  # all
 #         if name==attr: return obj
 #     return False
 
-
+def urlencode(params):
+	import urllib
+	if py3:
+		# params={'key':"val"} …
+		return urllib.parse.urlencode(params) # fuck python3!!
+	return urllib.urlencode(params)
 
 def download(url):  # to memory
 	return urlopen(url).read()
 
 def wget(url):  # to memory
+	return urlopen(url).read()
+
+def curl(url):  # to memory
 	return urlopen(url).read()
 
 
