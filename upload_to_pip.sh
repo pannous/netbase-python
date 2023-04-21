@@ -1,7 +1,7 @@
 # check ~/.pypirc for credentials
 # http://peterdowns.com/posts/first-time-with-pypi.html
 
-increase-package-version.py
+# increase-package-version.py
 
 # register
 # python3 setup.py register -r pypitest

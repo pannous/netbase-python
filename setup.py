@@ -18,7 +18,7 @@ setup(
     cmdclass=cmdclass,
     ext_modules=ext_modules,
     name='Netbase',
-    version="0.1.23",
+    version='0.1.234',
     author="Pannous",
     author_email="info@pannous.com",
     # https://github.com/pannous/netbase
