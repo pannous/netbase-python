@@ -7,3 +7,4 @@ netbase/__pycache__/
 netbase/extensions.pyc
 test.py
 upload_to_pip2.sh
+.idea
