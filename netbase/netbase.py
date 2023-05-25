@@ -9,35 +9,38 @@ import re
 import urllib
 from urllib.request import urlopen
 from urllib.request import urlretrieve
+
 # from .alle import All
 
 # api_limit = 100000
 api_limit = 400
-show_ids = False # else Charité(162684)
-limit_string= "%20limit%20" + str(api_limit)
+show_ids = False  # else Charité(162684)
+limit_string = "%20limit%20" + str(api_limit)
 
-from .extensions import *  # for functions
-
-from os.path import expanduser
+# from .extensions import *  # for functions
 
 api = "http://netbase.pannous.com/json/"
 api_all = "http://netbase.pannous.com/json/all/"
-api_list = "http://netbase.pannous.com/json/short/"
+api_short = "http://netbase.pannous.com/json/short/"
 api_query = "http://netbase.pannous.com/json/query/all/"
 
 api_html = api_all.replace("json", "html")
 caches_netbase_ = os.path.expanduser("~/Library/Caches/netbase/")
 abstracts_netbase = os.path.expanduser("~/Library/Caches/netbase/all/")
 
+
 def encode(text):
-	return urllib.parse.quote( text)
+	return urllib.parse.quote(text)
+
 
 def cached_names():
 	return []
-	# cached_files = ls(
-	# 	"~/Library/Caches/netbase/").map(lambda x: x.replace(".json", "").replace(" ", "_"))
-	# cached_files = cached_files.filter(lambda x: not is_number_string(x))
-	# return list(set(cached_files + cache.keys() + ['OKAH']))
+
+
+# cached_files = ls(
+# 	"~/Library/Caches/netbase/").map(lambda x: x.replace(".json", "").replace(" ", "_"))
+# cached_files = cached_files.filter(lambda x: not is_number_string(x))
+# return list(set(cached_files + cache.keys() + ['OKAH']))
 
 
 if not os.path.exists(abstracts_netbase):
@@ -64,15 +67,16 @@ class Edges(list):
 			sid, pid, oid = edge['sid'], edge['pid'], edge['oid']
 			subject, predicate, object = edge['subject'], edge['predicate'], edge['object']
 			print("%d %d  %d  %s  %s  %s" %
-					(sid, pid, oid, subject, predicate, object))
+			      (sid, pid, oid, subject, predicate, object))
 
 
 def get(id, name=0):
 	return net.get(id or name)
 
+
 class SelectProxy:
 	def __init__(self, node):
-		self.node=node
+		self.node = node
 
 	def __getattr__(self, item):
 		return self.node.getProperty(item)
@@ -84,11 +88,12 @@ def partner(node, edge):
 	else:
 		return SelectProxy(net.get(edge['sid']))
 
+
 def property(node, edge):
 	if edge['sid'] == node.id:
 		return (edge['predicate'], Node(name=edge['object'], id=edge['oid']))
 	else:
-		return (edge['predicate']+" @", Node(name=edge['subject'], id=edge['sid']))
+		return (edge['predicate'] + " @", Node(name=edge['subject'], id=edge['sid']))
 
 
 class Node:
@@ -98,9 +103,9 @@ class Node:
 		self.loaded = False
 		self.id = kwargs['id']
 		self.name = kwargs['name']
-		self.kind= 'kind' in kwargs and kwargs['kind'] or 0
-		self.image= 'image' in kwargs and kwargs['image'] or None
-		self.is_abstract= self.kind == -102
+		self.kind = 'kind' in kwargs and kwargs['kind'] or 0
+		self.image = 'image' in kwargs and kwargs['image'] or None
+		self.is_abstract = self.kind == -102
 		self.main_id = 'main_id' in kwargs and kwargs['main_id']
 		self.topic = 'topic' in kwargs and kwargs['topic']
 		if 'description' in kwargs:
@@ -119,8 +124,8 @@ class Node:
 	def __str__(self):
 		if not show_ids:
 			return self.name
-		if self.kind == -123 or self.name[0]=="+" : # number (may not be loaded yet)
-			return self.name # atoi
+		if self.kind == -123 or self.name[0] == "+":  # number (may not be loaded yet)
+			return self.name  # atoi
 		if self.topic:
 			return "%s(%s)%s" % (self.name, self.topic, self.is_abstract and "*" or "")
 		if self.name and self.id:
@@ -134,16 +139,16 @@ class Node:
 		return self.items()
 
 	def items(self):
-		pos=0
+		pos = 0
 		leng = len(self.edges)
-		while pos<self.count and pos< leng:
+		while pos < self.count and pos < leng:
 			edge = self.edges[pos]
 			if not "ID" in edge['predicate']:
 				yield property(self, edge)
-			pos+=1
-			if pos%api_limit==0:
+			pos += 1
+			if pos % api_limit == 0:
 				break
-				# self.edges += self.load_edges(self.id, pos, api_limit)
+			# self.edges += self.load_edges(self.id, pos, api_limit)
 
 	def __contains__(self, item):
 		return item in self._predicates() or item in self._objects()
@@ -152,7 +157,7 @@ class Node:
 		return self.count
 
 	def __bool__(self):
-		return self.id>0
+		return self.id != 0
 
 	def __eq__(self, other):
 		if isinstance(other, Node):
@@ -162,6 +167,7 @@ class Node:
 
 	def __hash__(self):
 		return self.id
+
 	# def __add__(self, other):
 	# def __radd__(self, other):
 
@@ -174,7 +180,6 @@ class Node:
 
 	def _json(self):
 		return "{name:'%s', id:%d, description:'%s', statements:%s}" % (self.name, self.id, self.description, self.edges)
-
 
 	# todo: load more edges
 	# def load_edges(self, offset, limit):
@@ -189,7 +194,7 @@ class Node:
 		print("%s{id:%d, topic:%s, edges=[" % (self.name, self.id, self.topic))
 		for edge in self.edges:
 			subject, predicate, object = edge['subject'], edge['predicate'], edge['object']
-			predicate= predicate.replace(" ","_")
+			predicate = predicate.replace(" ", "_")
 			if subject == self.name or edge['sid'] == self.id:
 				print(" %s:%s," % (predicate, object))
 			else:
@@ -201,7 +206,6 @@ class Node:
 					print(" %s_of:%s," % (predicate, subject))
 		print("]}")
 
-
 	def open(self):
 		if "http" in self.name:
 			os.system("open " + self.name)
@@ -212,7 +216,8 @@ class Node:
 		if "http" in self.name:
 			os.system("open " + self.name)
 		print(self.show_compact())
-		# print(self._json())
+
+	# print(self._json())
 
 	def _predicates(self):
 		alles = []
@@ -224,13 +229,11 @@ class Node:
 				alles.append(predicate)
 		return list(set(alles))
 
-
 	def _objects(self):
 		alles = []
 		for e in self.edges:
 			alles.append(e['object'])
 		return list(set(alles))
-
 
 	def _print_edges(self):
 		for e in self.edges:
@@ -239,7 +242,7 @@ class Node:
 			else:
 				if " of" in e['predicate']:
 					print(" %s: %s" %
-							(e['predicate'].replace(" of", ""), e['subject']))
+					      (e['predicate'].replace(" of", ""), e['subject']))
 				else:
 					print(" %s of: %s" % (e['predicate'], e['subject']))
 		return self.edges
@@ -265,8 +268,8 @@ class Node:
 			print(url)
 			urlretrieve(url, file)
 		# data = open(file,'rb').read()
-		data = codecs.open(file, "r", "utf-8").read()
-		data = json.loads(data)  #  !!!
+		data = codecs.open(file, "r", "utf-8", errors="ignore").read()
+		data = json.loads(data)  # !!!
 		# data = json.loads(str(data, "UTF8"))  #  !!!
 		if len(data['results']) > 0:
 			result = data['results'][0]
@@ -313,7 +316,6 @@ class Node:
 	# print(found)
 	# return set(found)
 
-
 	def __getitem__(self, index):
 		return self.getProperty(index)
 
@@ -345,7 +347,7 @@ class Node:
 			return self._map()
 		if property == 'count':
 			if hasattr(self, "edges"):
-					return self.edges.count(self.edges)
+				return self.edges.count(self.edges)
 			return 0
 		if property == 'json':
 			return self._json()
@@ -364,9 +366,9 @@ class Node:
 				elif not strict:
 					return Node(name=e['subject'], id=e['sid'])
 		if strict:
-			return []#None
+			return []  # None
 		for e in self.edges:
-			if property in e['predicate'].lower(): # SUBSTRING MATCH!
+			if property in e['predicate'].lower():  # SUBSTRING MATCH!
 				if e['oid'] == self.id:
 					return Node(name=e['subject'], id=e['sid'])
 				else:
@@ -386,7 +388,6 @@ class Node:
 
 	def isA(self, type):
 		return self.type == type or type.lower() in self.type.name.lower()
-
 
 
 # Node.show_edges = Node.print_csv
@@ -416,21 +417,23 @@ class Netbase:
 		self.caches = {}
 
 	def setGerman(x):
-		global api, api_list, api_all
+		global api, api_short, api_all
 		api = "http://de.netbase.pannous.com/json/all/"
-		api_list = "http://de.netbase.pannous.com/json/short/"
+		api_short = "http://de.netbase.pannous.com/json/short/"
 		api_all = "http://de.netbase.pannous.com/json/query/all/"
 
 	def types(self, name):
-		return self._all(name, instances=False) # select(kind=...)
+		return self._all(name, instances=False)  # select(kind=...)
 
 	# @classmethod
 	# noinspection PyTypeChecker
 	def _all(self, name, instances=False, deep=False, reload=False):
 		if isinstance(name, int):
-			n=self.get(name)
-			if not n.is_abstract: return n
-			else: name = str(name)  # id
+			n = self.get(name)
+			if not n.is_abstract:
+				return n
+			else:
+				name = str(name)  # id
 		if is_plural(name):
 			return self._all(singular(name))
 		if name in self.caches:
@@ -444,7 +447,7 @@ class Netbase:
 		# if not isinstance(data,unicode):
 		# 	data=data.decode("UTF8", 'ignore')
 		#  !!!  'str' object has no attribute 'decode'
-		# 	FUCKING PYTHON MADNESS!!
+		# PYTHON MADNESS!!
 		# http://stackoverflow.com/questions/5096776/unicode-decodeutf-8-ignore-raising-unicodeencodeerror#5096928
 		try:
 			# data = json.loads(data)
@@ -452,7 +455,7 @@ class Netbase:
 		except Exception as ex:
 			print(ex)
 			os.remove(file)
-			# return Node(id=-666, name="ERROR")
+		# return Node(id=-666, name="ERROR")
 		nodes = list()
 		for result in data["results"]:
 			# print(result)
@@ -465,14 +468,14 @@ class Netbase:
 		return nodes
 
 	# @classmethod
-	def get(self, name, get_the=False):
+	def get(self, name, get_the=False, short=False):
 		# return all(name)[0]
 		if isinstance(name, int):
 			name = str(name)  # id
-		if is_plural(name):
+		elif is_plural(name):
 			return self._all(singular(name))
 		if name in self.cache:
-			node= self.cache[name]
+			node = self.cache[name]
 			if not get_the or not node.is_abstract:
 				return node
 			if get_the and node.is_abstract and node.main_id:
@@ -481,9 +484,13 @@ class Netbase:
 
 		file = caches_netbase_ + name + ".json"
 		if not os.path.exists(file):
-			print(api_all + name)
-			urlretrieve(api_all + name + limit_string, file)
-		data = codecs.open(file, "rb", "utf-8").read()
+			if short:
+				print(api_short + name)
+				urlretrieve(api_short + name + limit_string, file)
+			else:
+				print(api_all + name)
+				urlretrieve(api_all + name + limit_string, file)
+		data = codecs.open(file, "rb", "utf-8", errors="ignore").read()
 		data = json.loads(data)
 		results = data['results']
 		leng = len(results)
@@ -495,14 +502,15 @@ class Netbase:
 				if node.main_id:
 					return get(node.main_id)
 				# xs=node.instances
-				node=node.instances[0]
+				node = node.instances[0]
 		else:
 			for i in range(leng):
-				result = results[i] # first == 'the'
+				result = results[i]  # first == 'the'
 				node = Node(result)
 				if not get_the or not node.is_abstract:
 					break
-		self.cache[name] = node
+		if not short:
+			self.cache[name] = node
 		return node
 
 	def __dir__(self):
@@ -529,19 +537,37 @@ class Alles(Netbase):
 	def __getattr__(self, name):
 		return net._all(name, False, False)
 
+
 class The:
 	def __getattr__(self, name):
 		return net.get(name, get_the=True)
+
+
+def name(id):
+	item = net.get(str(id), False, True)
+	if item:
+		return item.name
 
 
 world = net = Netbase()
 cache = net.cache
 alle = Alles()
 the = The()
+
+
 # All.setNet(net)
 
 def main():
-	global net,the
+	super = name(-1)
+	print(super)
+	assert super == "superclass"
+	for i in range(10000, 20000):
+		n = name(-i)
+		if not n:
+			continue
+		print(i, n)
+
+	global net, the
 	world = net = Netbase()
 	cache = net.cache
 	alle = Alles()
@@ -580,6 +606,7 @@ def main():
 	# print(net.USA.all)
 	# print(net.USA.select.country) # select proxy hack
 	return
+
 
 if __name__ == '__main__':
 	main()

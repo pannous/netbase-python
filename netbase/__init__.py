@@ -5,14 +5,14 @@ version = "0.1.16"
 # from netbase import world, the, net, Netbase
 # from netbase import Netbase, the
 # from netbase import Netbase
-from .netbase import Netbase, All
+from .netbase import Netbase, All, get
 
 # from netbase import net, Netbase
 # if py3:
 # 	from alle import All
 #
 world = net = Netbase()
-get=net.get
+
 #
 #
 # class Alle(type):

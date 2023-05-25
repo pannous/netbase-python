@@ -8,3 +8,9 @@ netbase/extensions.pyc
 test.py
 upload_to_pip2.sh
 .idea
+.dist-info
+dist
+build
+*.dist-info
+**.dist-info
+**/**.dist-info
